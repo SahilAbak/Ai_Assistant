@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Assistant</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0a0f1c;
+      color: #e6f1ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 40px; /* ✅ padding all around */
+      box-sizing: border-box;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 700px;
+      height: 100%;
+      max-height: 800px;
+      background: #111827;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .chat-header {
+      padding: 15px;
+      background: #0f172a;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #64ffda;
+      margin-bottom: 15px;
+    }
+
+    .chat-box {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .message {
+      max-width: 90%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      white-space: pre-wrap; /* ✅ preserve line breaks */
+    }
+
+    .user {
+      background: #2563eb;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .ai {
+      background: #1f2937;
+      color: #e6f1ff;
+      align-self: flex-start;
+    }
+
+    .chat-input {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 15px;
+      gap: 10px;
+    }
+
+    .chat-input textarea {
+      flex: 1;
+      max-width: 500px;
+      resize: none;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #1f2937;
+      color: #e6f1ff;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .chat-input button {
+      background: #64ffda;
+      color: #0a192f;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 18px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .chat-input button:hover {
+      background: #52e0c4;
+    }
+
+    /* ✅ Code block styling */
+    pre {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 8px;
+      overflow-x: auto;
+      color: #00ff99;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">NOVARA</div>
+    
+    <div class="chat-box" id="chatBox">
+      <p style="color:#7dd3fc;">💬 Start a conversation...</p>
+    </div>
+    
+    <div class="chat-input">
+      <textarea id="userInput" rows="1" placeholder="Ask me anything..."></textarea>
+      <button onclick="sendMessage()">Send</button>
+      <!-- 🔊 Speaker button beside Send -->
+      <button onclick="readLastResponse()">🔊</button>
+    </div>
+  </div>
+
+  <script>
+    let lastAIResponse = "";
+
+    // 🔊 Speak function
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.rate = 1; 
+      utterance.pitch = 1;
+      speechSynthesis.speak(utterance);
+    }
+
+    // 🔊 Read last AI response
+    function readLastResponse() {
+      if (lastAIResponse) {
+        speakText(lastAIResponse);
+      }
+    }
+
+    async function sendMessage() {
+      let input = document.getElementById("userInput");
+      let text = input.value.trim();
+      if (text === "") return;
+
+      let chatBox = document.getElementById("chatBox");
+
+      // User message
+      let userMsg = document.createElement("div");
+      userMsg.className = "message user";
+      userMsg.innerText = text;
+      chatBox.appendChild(userMsg);
+
+      // AI placeholder reply
+      let aiMsg = document.createElement("div");
+      aiMsg.className = "message ai";
+      aiMsg.innerText = "Thinking...";
+      chatBox.appendChild(aiMsg);
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+      input.value = "";
+
+      // Send request to Flask backend
+      let response = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+      let data = await response.json();
+
+      // ✅ Preserve line breaks + format code
+      let formattedResponse = data.response
+        .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>") // format code blocks
+        .replace(/\n/g, "<br>");
+
+      aiMsg.innerHTML = formattedResponse;
+
+      // Save last AI response for speaker button
+      lastAIResponse = data.response;
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
